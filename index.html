@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#25d366">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WA Scheduler">
+<meta name="description" content="Programa mensajes y encuestas de WhatsApp">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<title>WA Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f0a;
+  --surface: #111811;
+  --surface2: #162016;
+  --border: #1f2e1f;
+  --green: #25d366;
+  --green-dim: #1a9e4a;
+  --green-glow: rgba(37,211,102,0.12);
+  --text: #e8f5e8;
+  --text-muted: #6b8c6b;
+  --red: #ff4757;
+  --yellow: #ffd32a;
+  --blue: #4fc3f7;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Syne',sans-serif;
+  display:flex;flex-direction:column;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+}
+
+/* ── BACKGROUND ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:40px 40px;opacity:0.3;pointer-events:none;z-index:0;
+}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 18px 12px;display:flex;align-items:center;gap:12px;
+  position:relative;z-index:10;flex-shrink:0;
+}
+.topbar-icon{
+  width:36px;height:36px;background:var(--green);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 0 18px rgba(37,211,102,0.5);flex-shrink:0;
+}
+.topbar-title{font-size:1.15rem;font-weight:800;letter-spacing:-0.02em;flex:1;}
+.topbar-sub{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;}
+
+.btn-install{
+  background:var(--green-glow);border:1px solid var(--green-dim);
+  color:var(--green);border-radius:8px;padding:7px 12px;
+  font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:all 0.2s;
+}
+.btn-install:hover{background:rgba(37,211,102,0.2);}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  position:relative;z-index:10;flex-shrink:0;
+}
+.tab{
+  flex:1;padding:12px 8px;border:none;background:none;
+  font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;
+  color:var(--text-muted);cursor:pointer;transition:all 0.2s;
+  border-bottom:2px solid transparent;display:flex;flex-direction:column;
+  align-items:center;gap:2px;
+}
+.tab .tab-icon{font-size:16px;}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+
+/* ── SCROLL AREA ── */
+.content{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding:16px 14px 24px;
+  position:relative;z-index:1;
+}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ── BANNER ── */
+.banner{
+  border-radius:14px;padding:14px 16px;margin-bottom:16px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.banner-notif{background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);}
+.banner-success{background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.2);}
+.banner-warn{background:rgba(255,211,42,0.08);border:1px solid rgba(255,211,42,0.2);}
+.banner-icon{font-size:22px;flex-shrink:0;margin-top:1px;}
+.banner-body{}
+.banner-title{font-size:0.85rem;font-weight:700;margin-bottom:3px;}
+.banner-text{font-size:0.75rem;color:var(--text-muted);line-height:1.4;}
+.banner-btn{
+  margin-top:10px;display:inline-block;
+  background:var(--blue);color:#000;border:none;
+  border-radius:8px;padding:8px 14px;
+  font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;
+  cursor:pointer;transition:opacity 0.2s;
+}
+.banner-btn:hover{opacity:0.85;}
+
+/* ── FORM ── */
+.section-label{
+  font-family:'DM Mono',monospace;font-size:0.6rem;
+  letter-spacing:0.15em;text-transform:uppercase;color:var(--green);
+  margin-bottom:10px;
+}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:18px;margin-bottom:14px;
+  position:relative;
+}
+.card::before{
+  content:'';position:absolute;inset:-1px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(37,211,102,0.1),transparent 55%);
+  pointer-events:none;border-radius:16px;
+}
+.field{margin-bottom:14px;}
+label{display:block;font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;}
+input,textarea,select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;
+  font-size:1rem;padding:12px 13px;
+  transition:border-color 0.2s,box-shadow 0.2s;outline:none;
+  -webkit-appearance:none;appearance:none;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:var(--green-dim);box-shadow:0 0 0 3px var(--green-glow);
+}
+textarea{resize:none;height:90px;line-height:1.5;}
+.helper{font-family:'DM Mono',monospace;font-size:0.63rem;color:var(--text-muted);margin-top:5px;}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.mode-toggle{display:flex;gap:6px;margin-bottom:14px;}
+.mode-btn{
+  flex:1;padding:10px 6px;border:1px solid var(--border);border-radius:9px;
+  background:var(--surface2);color:var(--text-muted);
+  font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;
+  cursor:pointer;transition:all 0.2s;text-align:center;
+}
+.mode-btn.active{border-color:var(--green-dim);color:var(--green);background:var(--green-glow);}
+
+.survey-preview{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:13px;margin-bottom:14px;
+}
+.preview-label{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;}
+.preview-msg{font-size:0.82rem;color:var(--text);line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.survey-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.chip{padding:5px 13px;border-radius:20px;font-size:0.76rem;font-weight:700;border:1px solid;}
+.chip-yes{border-color:#25d366;color:#25d366;background:rgba(37,211,102,0.08);}
+.chip-no{border-color:#ff4757;color:#ff4757;background:rgba(255,71,87,0.08);}
+.chip-maybe{border-color:#ffd32a;color:#ffd32a;background:rgba(255,211,42,0.08);}
+
+.contacts-row{display:flex;gap:8px;}
+.contacts-row input{flex:1;}
+.btn-add{
+  padding:12px 13px;background:var(--green-glow);border:1px solid var(--green-dim);
+  border-radius:10px;color:var(--green);font-size:20px;cursor:pointer;
+  transition:background 0.2s;flex-shrink:0;
+}
+.btn-add:hover{background:rgba(37,211,102,0.2);}
+.contact-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.contact-tag{
+  display:flex;align-items:center;gap:5px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:4px 10px;font-size:0.76rem;color:var(--text-muted);
+}
+.contact-tag button{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:0;}
+.contact-tag button:hover{color:var(--red);}
+
+.btn{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;
+  cursor:pointer;transition:all 0.2s;
+}
+.btn-primary{background:var(--green);color:#000;box-shadow:0 4px 20px rgba(37,211,102,0.3);}
+.btn-primary:active{transform:scale(0.98);}
+
+/* ── LIST ── */
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.count-badge{
+  background:var(--green-glow);border:1px solid var(--green-dim);
+  color:var(--green);font-family:'DM Mono',monospace;
+  font-size:0.66rem;padding:3px 10px;border-radius:20px;
+}
+.empty-state{text-align:center;padding:32px 0;color:var(--text-muted);
+  font-family:'DM Mono',monospace;font-size:0.76rem;line-height:1.8;}
+
+.msg-item{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:13px;padding:14px;margin-bottom:10px;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.msg-item.pending{border-left:3px solid var(--green-dim);}
+.msg-item.firing{border-left:3px solid var(--yellow);animation:pulse 0.7s ease-in-out infinite alternate;}
+.msg-item.sent{border-left:3px solid var(--text-muted);opacity:0.5;}
+@keyframes pulse{from{box-shadow:0 0 0 rgba(255,211,42,0);}to{box-shadow:0 0 16px rgba(255,211,42,0.35);}}
+
+.msg-top{display:flex;gap:11px;align-items:flex-start;}
+.msg-avatar{
+  width:38px;height:38px;border-radius:50%;background:var(--green-glow);
+  border:1px solid var(--green-dim);display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0;
+}
+.msg-body{flex:1;min-width:0;}
+.msg-title{font-size:0.85rem;font-weight:700;color:var(--green);margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msg-text{font-size:0.76rem;color:var(--text-muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;margin-bottom:6px;}
+.msg-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.msg-time{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text-muted);}
+.msg-countdown{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--green);
+  background:var(--green-glow);padding:1px 7px;border-radius:10px;}
+.msg-badge{font-family:'DM Mono',monospace;font-size:0.6rem;padding:2px 7px;border-radius:10px;}
+.badge-pending{background:rgba(37,211,102,0.1);color:var(--green);}
+.badge-firing{background:rgba(255,211,42,0.12);color:var(--yellow);}
+.badge-sent{background:rgba(255,255,255,0.05);color:var(--text-muted);}
+.badge-poll{background:rgba(79,195,247,0.1);color:var(--blue);border:1px solid rgba(79,195,247,0.2);}
+.btn-del{background:none;border:none;color:var(--text-muted);cursor:pointer;
+  font-size:16px;padding:2px;border-radius:6px;flex-shrink:0;transition:color 0.2s;}
+.btn-del:hover{color:var(--red);}
+
+/* ── RESULTS ── */
+.survey-results{margin-top:11px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.results-title{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.1em;margin-bottom:9px;}
+.result-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.result-label{font-size:0.76rem;font-weight:700;width:64px;flex-shrink:0;}
+.result-bar-wrap{flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+.result-bar{height:100%;border-radius:4px;transition:width 0.6s ease;}
+.bar-yes{background:var(--green);}
+.bar-no{background:var(--red);}
+.bar-maybe{background:var(--yellow);}
+.result-count{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);width:24px;text-align:right;}
+
+.contact-section-label{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.08em;margin:10px 0 5px;}
+.contact-result-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;}
+.contact-result-phone{font-size:0.76rem;color:var(--text-muted);}
+.contact-result-vote{font-size:0.78rem;font-weight:700;display:flex;align-items:center;gap:4px;}
+.btn-edit-vote{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;}
+.btn-record{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.25);
+  color:var(--blue);border-radius:7px;padding:4px 10px;
+  font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;
+  cursor:pointer;transition:all 0.2s;
+}
+.btn-record:hover{background:rgba(79,195,247,0.2);}
+
+/* ── MODAL ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  z-index:500;display:flex;align-items:flex-end;justify-content:center;
+  padding:0 0 var(--safe-bottom);
+}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px 20px 0 0;padding:24px 22px 28px;
+  width:100%;max-width:480px;
+  animation:modalUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes modalUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-size:1.05rem;font-weight:800;margin-bottom:4px;}
+.modal-sub{font-size:0.76rem;color:var(--text-muted);margin-bottom:18px;}
+.modal-contact{font-weight:700;color:var(--green);}
+.vote-btns{display:flex;gap:10px;margin-bottom:16px;}
+.vote-btn{flex:1;padding:16px 6px;border-radius:12px;border:2px solid;
+  font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:800;cursor:pointer;transition:all 0.2s;}
+.vote-btn-yes{border-color:var(--green);color:var(--green);background:rgba(37,211,102,0.08);}
+.vote-btn-yes.selected,.vote-btn-yes:active{background:var(--green);color:#000;}
+.vote-btn-no{border-color:var(--red);color:var(--red);background:rgba(255,71,87,0.08);}
+.vote-btn-no.selected,.vote-btn-no:active{background:var(--red);color:#fff;}
+.vote-btn-maybe{border-color:var(--yellow);color:var(--yellow);background:rgba(255,211,42,0.08);}
+.vote-btn-maybe.selected,.vote-btn-maybe:active{background:var(--yellow);color:#000;}
+.modal-actions{display:flex;gap:10px;}
+.btn-cancel{flex:1;padding:13px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text-muted);
+  font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;}
+.btn-save{flex:2;padding:13px;border-radius:10px;border:none;
+  background:var(--green);color:#000;
+  font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;}
+.btn-save:disabled{background:var(--border);color:var(--text-muted);cursor:not-allowed;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;top:calc(var(--safe-top) + 12px);left:12px;right:12px;
+  background:var(--surface);border:1px solid var(--green);
+  border-radius:14px;padding:14px 16px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 24px var(--green-glow);
+  z-index:1000;display:flex;flex-direction:column;gap:10px;
+  animation:toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+.toast-top{display:flex;align-items:center;justify-content:space-between;}
+.toast-title{font-size:0.88rem;font-weight:700;color:var(--green);display:flex;align-items:center;gap:6px;}
+.toast-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;}
+.toast-msg{font-size:0.76rem;color:var(--text-muted);line-height:1.4;}
+.toast-actions{display:flex;gap:8px;}
+.toast-btn{
+  flex:1;background:var(--green);color:#000;border:none;border-radius:9px;
+  padding:10px 12px;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;
+  cursor:pointer;
+}
+.toast-btn-skip{
+  flex:0 0 auto;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);
+  border-radius:9px;padding:10px 12px;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;
+  cursor:pointer;
+}
+
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-icon">💬</div>
+  <div style="flex:1">
+    <div class="topbar-title">WA Scheduler</div>
+    <div class="topbar-sub">Mensajes programados</div>
+  </div>
+  <button class="btn-install hidden" id="btnInstall">⬇ Instalar</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab(0)"><span class="tab-icon">✉️</span>Nuevo</button>
+  <button class="tab" onclick="switchTab(1)"><span class="tab-icon">📋</span>Programados</button>
+  <button class="tab" onclick="switchTab(2)"><span class="tab-icon">📊</span>Resultados</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ─── TAB 0: NEW ─── -->
+  <div class="tab-pane active" id="pane-0">
+
+    <!-- Notification banner -->
+    <div class="banner banner-notif" id="bannerNotif">
+      <div class="banner-icon">🔔</div>
+      <div class="banner-body">
+        <div class="banner-title">Activa las notificaciones</div>
+        <div class="banner-text">Para recibir avisos cuando llegue la hora, aunque la app esté cerrada.</div>
+        <button class="banner-btn" onclick="requestNotifPermission()">Activar notificaciones</button>
+      </div>
+    </div>
+
+    <!-- Install banner -->
+    <div class="banner banner-success hidden" id="bannerInstall">
+      <div class="banner-icon">📱</div>
+      <div class="banner-body">
+        <div class="banner-title">Instala la app en tu Android</div>
+        <div class="banner-text">Toca "Instalar" arriba para añadirla a tu pantalla de inicio y recibir notificaciones reales.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="section-label">// tipo de mensaje</p>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-msg" onclick="setMode('message')">✉️ Mensaje</button>
+        <button class="mode-btn" id="mode-poll" onclick="setMode('poll')">📊 Encuesta</button>
+      </div>
+
+      <div class="field">
+        <label>Destinatario(s)</label>
+        <div class="contacts-row">
+          <input type="tel" id="phoneInput" placeholder="+52 55 1234 5678" onkeydown="if(event.key==='Enter'){event.preventDefault();addContact();}"/>
+          <button class="btn-add" onclick="addContact()">＋</button>
+        </div>
+        <p class="helper">Código de país obligatorio · Enter o ＋ para agregar</p>
+        <div class="contact-tags" id="contactTags"></div>
+      </div>
+
+      <div class="field">
+        <label id="msgLabel">Mensaje</label>
+        <textarea id="message" placeholder="Escribe tu mensaje aquí..." oninput="updatePreview()"></textarea>
+      </div>
+
+      <div id="pollPreview" class="survey-preview hidden">
+        <div class="preview-label">// vista previa</div>
+        <div class="preview-msg" id="previewText">Tu pregunta aparecerá aquí...</div>
+        <div class="survey-chips">
+          <span class="chip chip-yes">✅ Sí</span>
+          <span class="chip chip-no">❌ No</span>
+          <span class="chip chip-maybe">🤔 Quizás</span>
+        </div>
+      </div>
+
+      <div class="time-row">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="date"/>
+        </div>
+        <div class="field">
+          <label>Hora</label>
+          <input type="time" id="time"/>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="scheduleMessage()">⏰ &nbsp;Programar</button>
+    </div>
+  </div>
+
+  <!-- ─── TAB 1: LIST ─── -->
+  <div class="tab-pane hidden" id="pane-1">
+    <div class="list-header">
+      <p class="section-label" style="margin:0">// programados</p>
+      <span class="count-badge" id="countBadge">0 activos</span>
+    </div>
+    <div id="msgList"><div class="empty-state">Nada programado aún.<br>Crea uno en "Nuevo" 🚀</div></div>
+  </div>
+
+  <!-- ─── TAB 2: RESULTS ─── -->
+  <div class="tab-pane hidden" id="pane-2">
+    <div class="list-header">
+      <p class="section-label" style="margin:0">// resultados</p>
+    </div>
+    <div id="resultsList"><div class="empty-state">Sin encuestas aún.<br>Crea una en "Nuevo" 📊</div></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast">
+  <div class="toast-top">
+    <div class="toast-title">🔔 ¡Hora de enviar!</div>
+    <button class="toast-close" onclick="closeToast()">✕</button>
+  </div>
+  <div class="toast-msg" id="toastMsg"></div>
+  <div class="toast-actions">
+    <button class="toast-btn" id="toastBtn">📱 Abrir WhatsApp</button>
+    <button class="toast-btn-skip" onclick="skipToast()">Saltar</button>
+  </div>
+</div>
+
+<!-- MODAL (record vote) -->
+<div class="overlay hidden" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Registrar respuesta</div>
+    <div class="modal-sub">¿Qué respondió <span class="modal-contact" id="modalContact"></span>?</div>
+    <div class="vote-btns">
+      <button class="vote-btn vote-btn-yes" onclick="selectVote('yes')">✅<br>Sí</button>
+      <button class="vote-btn vote-btn-no" onclick="selectVote('no')">❌<br>No</button>
+      <button class="vote-btn vote-btn-maybe" onclick="selectVote('maybe')">🤔<br>Quizás</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" id="btnSave" onclick="saveVote()" disabled>Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let messages = JSON.parse(localStorage.getItem('wa_pwa_v1') || '[]');
+let currentMode = 'message';
+let contacts = [];
+let modalData = null;
+let selectedVote = null;
+let activeToast = null;
+let toastIdx = 0;
+let deferredInstall = null;
+let swReg = null;
+let notifGranted = Notification.permission === 'granted';
+
+function save() { localStorage.setItem('wa_pwa_v1', JSON.stringify(messages)); }
+
+// ═══════════════════════════════════════════════
+//  SERVICE WORKER
+// ═══════════════════════════════════════════════
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swReg = await navigator.serviceWorker.register('./sw.js');
+    console.log('SW registered');
+    // Listen for messages from SW (background check)
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'CHECK_MESSAGES') checkMessages();
+    });
+  } catch(err) { console.warn('SW failed:', err); }
+}
+
+// ═══════════════════════════════════════════════
+//  INSTALL (PWA)
+// ═══════════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById('btnInstall').classList.remove('hidden');
+  document.getElementById('bannerInstall').classList.remove('hidden');
+});
+
+document.getElementById('btnInstall').addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  const { outcome } = await deferredInstall.userChoice;
+  if (outcome === 'accepted') {
+    document.getElementById('btnInstall').classList.add('hidden');
+    document.getElementById('bannerInstall').classList.add('hidden');
+  }
+  deferredInstall = null;
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('btnInstall').classList.add('hidden');
+  document.getElementById('bannerInstall').classList.add('hidden');
+  showSystemToast('¡App instalada! Ya puedes cerrar el navegador 🎉');
+});
+
+// ═══════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════
+function updateNotifBanner() {
+  const banner = document.getElementById('bannerNotif');
+  if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    banner.classList.add('hidden');
+  }
+  notifGranted = Notification.permission === 'granted';
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
+  const perm = await Notification.requestPermission();
+  notifGranted = perm === 'granted';
+  updateNotifBanner();
+  if (perm === 'granted') showSystemToast('✅ Notificaciones activadas');
+  else showSystemToast('❌ Notificaciones denegadas. Actívalas en ajustes del navegador.');
+}
+
+async function sendNotification(title, body, data) {
+  if (!notifGranted) return;
+  if (swReg) {
+    // Use SW for reliable delivery
+    swReg.active?.postMessage({ type: 'SHOW_NOTIFICATION', title, body, tag: 'wa-sched-' + Date.now(), data });
+  } else {
+    new Notification(title, { body, icon: './icon-192.png', data });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function switchTab(idx) {
+  document.querySelectorAll('.tab-pane').forEach((p,i) => {
+    p.classList.toggle('active', i === idx);
+    p.classList.toggle('hidden', i !== idx);
+  });
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === idx));
+  if (idx === 1) renderList();
+  if (idx === 2) renderResults();
+}
+
+// ═══════════════════════════════════════════════
+//  MODE
+// ═══════════════════════════════════════════════
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-msg').classList.toggle('active', mode === 'message');
+  document.getElementById('mode-poll').classList.toggle('active', mode === 'poll');
+  document.getElementById('msgLabel').textContent = mode === 'poll' ? 'Pregunta de la encuesta' : 'Mensaje';
+  document.getElementById('message').placeholder = mode === 'poll'
+    ? '¿Puedes venir a la reunión del viernes?' : 'Escribe tu mensaje aquí...';
+  document.getElementById('pollPreview').classList.toggle('hidden', mode === 'message');
+  updatePreview();
+}
+
+function updatePreview() {
+  const q = document.getElementById('message').value.trim();
+  document.getElementById('previewText').textContent = q || 'Tu pregunta aparecerá aquí...';
+}
+
+// ═══════════════════════════════════════════════
+//  CONTACTS
+// ═══════════════════════════════════════════════
+function addContact() {
+  const input = document.getElementById('phoneInput');
+  const raw = input.value.replace(/\s/g,'');
+  if (!raw) return;
+  if (!/^\+?\d{7,15}$/.test(raw)) { showSystemToast('Número inválido. Usa: +521234567890'); return; }
+  if (contacts.find(c=>c.phone===raw)) { showSystemToast('Número ya agregado'); return; }
+  contacts.push({ phone: raw });
+  input.value = '';
+  input.focus();
+  renderTags();
+}
+
+function removeContact(phone) {
+  contacts = contacts.filter(c=>c.phone!==phone);
+  renderTags();
+}
+
+function renderTags() {
+  document.getElementById('contactTags').innerHTML = contacts.map(c =>
+    `<span class="contact-tag">📱 ${esc(c.phone)}<button onclick="removeContact('${c.phone}')">✕</button></span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  SCHEDULE
+// ═══════════════════════════════════════════════
+function scheduleMessage() {
+  // Auto-add inline phone
+  const inline = document.getElementById('phoneInput').value.replace(/\s/g,'');
+  if (inline && /^\+?\d{7,15}$/.test(inline) && !contacts.find(c=>c.phone===inline)) {
+    contacts.push({ phone: inline });
+    document.getElementById('phoneInput').value = '';
+    renderTags();
+  }
+  if (contacts.length === 0) { showSystemToast('Agrega al menos un destinatario'); return; }
+  const msg = document.getElementById('message').value.trim();
+  const date = document.getElementById('date').value;
+  const time = document.getElementById('time').value;
+  if (!msg || !date || !time) { showSystemToast('Completa todos los campos'); return; }
+  const scheduledAt = new Date(`${date}T${time}:00`);
+  if (scheduledAt <= new Date()) { showSystemToast('La hora debe ser en el futuro'); return; }
+
+  const entry = {
+    id: Date.now(),
+    type: currentMode,
+    contacts: contacts.map(c=>({phone:c.phone,vote:null})),
+    message: msg,
+    scheduledAt: scheduledAt.toISOString(),
+    status: 'pending'
+  };
+
+  messages.push(entry);
+  save();
+
+  // Schedule notification via SW if possible
+  scheduleNotification(entry);
+
+  contacts = [];
+  renderTags();
+  document.getElementById('message').value = '';
+  updatePreview();
+  switchTab(1);
+  showSystemToast('✅ Mensaje programado');
+}
+
+async function scheduleNotification(entry) {
+  if (!notifGranted || !swReg) return;
+  // Register periodic background sync for Android
+  try {
+    await swReg.periodicSync?.register('check-messages', { minInterval: 60 * 1000 });
+  } catch(e) { /* not supported */ }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER LIST
+// ═══════════════════════════════════════════════
+function renderList() {
+  const el = document.getElementById('msgList');
+  const active = messages.filter(m=>m.status!=='sent');
+  document.getElementById('countBadge').textContent = `${active.length} activos`;
+  if (messages.length===0) { el.innerHTML=`<div class="empty-state">Nada programado.<br>Crea uno en "Nuevo" 🚀</div>`; return; }
+
+  el.innerHTML = messages.slice().reverse().map(m => {
+    const diff = new Date(m.scheduledAt)-new Date();
+    const countdown = m.status==='pending' ? fmtCountdown(diff) : '';
+    const isPoll = m.type==='poll';
+    const shortTo = m.contacts.length===1 ? m.contacts[0].phone : `${m.contacts[0].phone} +${m.contacts.length-1}`;
+    return `
+      <div class="msg-item ${m.status}" id="item-${m.id}">
+        <div class="msg-top">
+          <div class="msg-avatar">${isPoll?'📊':'💬'}</div>
+          <div class="msg-body">
+            <div class="msg-title">${esc(shortTo)}</div>
+            <div class="msg-text">${esc(m.message)}</div>
+            <div class="msg-meta">
+              <span class="msg-time">📅 ${fmtTime(m.scheduledAt)}</span>
+              ${m.status==='pending'?`<span class="msg-countdown" id="cd-${m.id}">⏱ ${countdown}</span>`:''}
+              <span class="msg-badge badge-${m.status}">${m.status==='pending'?'Programado':m.status==='firing'?'🔔 Enviando':'✓ Enviado'}</span>
+              ${isPoll?`<span class="msg-badge badge-poll">Encuesta</span>`:''}
+            </div>
+          </div>
+          <button class="btn-del" onclick="delMsg(${m.id})">🗑</button>
+        </div>
+        ${isPoll&&m.status==='sent'?miniResults(m):''}
+      </div>`;
+  }).join('');
+}
+
+function miniResults(m) {
+  const total=m.contacts.filter(c=>c.vote).length;
+  const yes=m.contacts.filter(c=>c.vote==='yes').length;
+  const no=m.contacts.filter(c=>c.vote==='no').length;
+  const mb=m.contacts.filter(c=>c.vote==='maybe').length;
+  const p=v=>total?Math.round(v/total*100):0;
+  return `<div class="survey-results">
+    <div class="results-title">Respuestas (${total}/${m.contacts.length})</div>
+    <div class="result-row"><span class="result-label" style="color:var(--green)">✅ Sí</span><div class="result-bar-wrap"><div class="result-bar bar-yes" style="width:${p(yes)}%"></div></div><span class="result-count">${yes}</span></div>
+    <div class="result-row"><span class="result-label" style="color:var(--red)">❌ No</span><div class="result-bar-wrap"><div class="result-bar bar-no" style="width:${p(no)}%"></div></div><span class="result-count">${no}</span></div>
+    <div class="result-row"><span class="result-label" style="color:var(--yellow)">🤔 Quizás</span><div class="result-bar-wrap"><div class="result-bar bar-maybe" style="width:${p(mb)}%"></div></div><span class="result-count">${mb}</span></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════
+function renderResults() {
+  const polls = messages.filter(m=>m.type==='poll');
+  const el = document.getElementById('resultsList');
+  if (polls.length===0) { el.innerHTML=`<div class="empty-state">Sin encuestas aún.<br>Crea una en "Nuevo" 📊</div>`; return; }
+
+  el.innerHTML = polls.slice().reverse().map(m => {
+    const total=m.contacts.filter(c=>c.vote).length;
+    const yes=m.contacts.filter(c=>c.vote==='yes').length;
+    const no=m.contacts.filter(c=>c.vote==='no').length;
+    const mb=m.contacts.filter(c=>c.vote==='maybe').length;
+    const p=v=>total?Math.round(v/total*100):0;
+    const pending=m.contacts.filter(c=>!c.vote);
+    const voted=m.contacts.filter(c=>c.vote);
+
+    return `<div class="msg-item ${m.status}" style="display:block;">
+      <div class="msg-top" style="margin-bottom:10px;">
+        <div class="msg-avatar">📊</div>
+        <div class="msg-body">
+          <div class="msg-title">${esc(m.message)}</div>
+          <div class="msg-time">📅 ${fmtTime(m.scheduledAt)} · ${m.contacts.length} persona(s)</div>
+        </div>
+      </div>
+      <div class="survey-results">
+        <div class="results-title">Resultados (${total}/${m.contacts.length} respondieron)</div>
+        <div class="result-row"><span class="result-label" style="color:var(--green)">✅ Sí</span><div class="result-bar-wrap"><div class="result-bar bar-yes" style="width:${p(yes)}%"></div></div><span class="result-count">${yes}</span></div>
+        <div class="result-row"><span class="result-label" style="color:var(--red)">❌ No</span><div class="result-bar-wrap"><div class="result-bar bar-no" style="width:${p(no)}%"></div></div><span class="result-count">${no}</span></div>
+        <div class="result-row"><span class="result-label" style="color:var(--yellow)">🤔 Quizás</span><div class="result-bar-wrap"><div class="result-bar bar-maybe" style="width:${p(mb)}%"></div></div><span class="result-count">${mb}</span></div>
+        ${pending.length?`<div class="contact-section-label">Sin respuesta</div>
+          ${pending.map(c=>`<div class="contact-result-row">
+            <span class="contact-result-phone">📱 ${esc(c.phone)}</span>
+            <button class="btn-record" onclick="openModal(${m.id},'${c.phone}')">+ Registrar</button>
+          </div>`).join('')}`:''}
+        ${voted.length?`<div class="contact-section-label">Respondieron</div>
+          ${voted.map(c=>`<div class="contact-result-row">
+            <span class="contact-result-phone">📱 ${esc(c.phone)}</span>
+            <span class="contact-result-vote" style="color:${c.vote==='yes'?'var(--green)':c.vote==='no'?'var(--red)':'var(--yellow)'}">
+              ${c.vote==='yes'?'✅ Sí':c.vote==='no'?'❌ No':'🤔 Quizás'}
+              <button class="btn-edit-vote" onclick="clearVote(${m.id},'${c.phone}')" title="Cambiar">✎</button>
+            </span>
+          </div>`).join('')}`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+function openModal(msgId, phone) {
+  modalData={msgId,phone}; selectedVote=null;
+  document.getElementById('modalContact').textContent=phone;
+  document.querySelectorAll('.vote-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('btnSave').disabled=true;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('overlay').classList.add('hidden'); modalData=null; selectedVote=null; }
+function overlayClick(e) { if(e.target===e.currentTarget) closeModal(); }
+function selectVote(v) {
+  selectedVote=v;
+  document.querySelectorAll('.vote-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelector(`.vote-btn-${v}`).classList.add('selected');
+  document.getElementById('btnSave').disabled=false;
+}
+function saveVote() {
+  if(!modalData||!selectedVote) return;
+  const m=messages.find(m=>m.id===modalData.msgId);
+  if(m){const c=m.contacts.find(c=>c.phone===modalData.phone);if(c)c.vote=selectedVote;save();}
+  closeModal(); renderResults();
+}
+function clearVote(msgId,phone) {
+  const m=messages.find(m=>m.id===msgId);
+  if(m){const c=m.contacts.find(c=>c.phone===phone);if(c){c.vote=null;save();}}
+  renderResults();
+}
+
+// ═══════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════
+function delMsg(id) {
+  messages=messages.filter(m=>m.id!==id); save(); renderList();
+}
+
+// ═══════════════════════════════════════════════
+//  CHECK SCHEDULED (runs every second)
+// ═══════════════════════════════════════════════
+function checkMessages() {
+  const now = new Date();
+  messages.forEach(m => {
+    if(m.status!=='pending') return;
+    const diff = new Date(m.scheduledAt)-now;
+    const cd = document.getElementById(`cd-${m.id}`);
+    if(cd) cd.textContent=`⏱ ${fmtCountdown(diff)}`;
+
+    if(diff<=0) {
+      m.status='firing'; save();
+      renderList();
+      triggerAlert(m);
+      setTimeout(()=>{ m.status='sent'; save(); renderList(); }, 120000);
+    }
+  });
+}
+
+async function triggerAlert(entry) {
+  const isPoll = entry.type==='poll';
+  const dest = entry.contacts.length===1 ? entry.contacts[0].phone : `${entry.contacts.length} contactos`;
+  const preview = entry.message.length>50 ? entry.message.slice(0,50)+'...' : entry.message;
+
+  // System notification (works even if screen off on Android)
+  await sendNotification(
+    isPoll ? '📊 Encuesta lista para enviar' : '💬 Mensaje listo para enviar',
+    `Para ${dest}: "${preview}"`,
+    { phone: entry.contacts[0].phone.replace(/\D/g,''), text: buildText(entry) }
+  );
+
+  // In-app toast
+  activeToast = entry; toastIdx = 0;
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = `Para ${dest}: "${preview}"`;
+  updateToastBtn();
+  el.classList.remove('hidden');
+}
+
+function buildText(entry) {
+  let t = entry.message;
+  if(entry.type==='poll') t += '\n\nResponde con:\n✅ *Sí*\n❌ *No*\n🤔 *Quizás*';
+  return t;
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function updateToastBtn() {
+  if(!activeToast) return;
+  const n=activeToast.contacts.length;
+  document.getElementById('toastBtn').textContent =
+    n>1 ? `📱 Abrir (${toastIdx+1}/${n})` : '📱 Abrir WhatsApp';
+}
+
+document.getElementById('toastBtn').addEventListener('click', () => {
+  if(!activeToast) return;
+  const c=activeToast.contacts[toastIdx];
+  const phone=c.phone.replace(/\D/g,'');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildText(activeToast))}`, '_blank');
+  toastIdx++;
+  if(toastIdx<activeToast.contacts.length) updateToastBtn();
+  else closeToast();
+});
+
+function skipToast() {
+  if(!activeToast) return;
+  toastIdx++;
+  if(toastIdx<activeToast.contacts.length) updateToastBtn();
+  else closeToast();
+}
+
+function closeToast() {
+  document.getElementById('toast').classList.add('hidden');
+  activeToast=null; toastIdx=0;
+}
+
+// ═══════════════════════════════════════════════
+//  SYSTEM TOAST (small feedback)
+// ═══════════════════════════════════════════════
+let sysToastTimer;
+function showSystemToast(msg) {
+  let el = document.getElementById('sysToast');
+  if(!el) {
+    el=document.createElement('div');
+    el.id='sysToast';
+    el.style.cssText='position:fixed;bottom:calc(var(--safe-bottom)+20px);left:50%;transform:translateX(-50%);background:#1f2e1f;border:1px solid var(--border);border-radius:20px;padding:10px 18px;font-size:0.82rem;font-weight:700;color:var(--text);z-index:2000;pointer-events:none;white-space:nowrap;transition:opacity 0.3s;';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(sysToastTimer);
+  sysToastTimer=setTimeout(()=>{el.style.opacity='0';}, 2500);
+}
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function fmtCountdown(ms) {
+  if(ms<=0) return 'Ahora';
+  const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  if(h>0) return `${h}h ${m}m`; if(m>0) return `${m}m ${ss}s`; return `${ss}s`;
+}
+function fmtTime(iso) {
+  const d=new Date(iso);
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+' '+
+    d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setDefaults() {
+  const now=new Date(); now.setHours(now.getHours()+1);
+  const pad=n=>String(n).padStart(2,'0');
+  document.getElementById('date').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('time').value=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+registerSW();
+updateNotifBanner();
+setDefaults();
+setInterval(checkMessages, 1000);
+</script>
+</body>
+</html>
